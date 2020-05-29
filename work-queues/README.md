@@ -27,7 +27,28 @@ docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-manag
 
 ## Demo Introduction
 
-該範例架構延續 [toturial 1](https://github.com/yinnping/rabbitmq-dotnet-tutorials/tree/master/hello-world)，只有變動少量的程式碼，讓 consumer 模擬需要花時間處理複雜工作的情境。 
+在此範例中的 comsumer 是 Worker 專案，值得注意的是委派到 `consumer.Received` 的 arrow function:
+
+```csharp
+// 略...
+consumer.Received += (model, eventArgs) => {
+    var body = eventArgs.Body;
+    var message = Encoding.UTF8.GetString(body.ToArray());
+    Console.Write(" [x] Received '{0}'", message);
+
+    int dots = message.Split(".").Length - 1;
+
+    // 有幾個 . 就等幾秒
+    Thread.Sleep(dots * 1000);
+    Console.WriteLine(" => Finish!");
+};
+...略
+```
+
+當收到 producer 的 message 後，會去計算 message 中的 dot 數量，並依此計算等待的秒數，模擬處理複雜工作時所花費的時間。
+
+測試時也可以開啟兩個以上的 consumer，觀察在預設情況下 consumer 會如何執行在佇列中的工作。
+
 
 ## Run demo
 
