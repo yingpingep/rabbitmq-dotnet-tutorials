@@ -15,7 +15,14 @@ namespace Worker
             using (var connection = factory.CreateConnection())
             using (var channel = connection.CreateModel())
             {
-                channel.QueueDeclare("task_queue", false, false, false, null);
+                channel.QueueDeclare(queue: "task_queue", 
+                                     durable: true, 
+                                     exclusive: false, 
+                                     autoDelete: false, 
+                                     arguments: null);
+
+                channel.BasicQos(0, 1, false);
+
                 var consumer = new EventingBasicConsumer(channel);
                 consumer.Received += (model, eventArgs) => {
                     var body = eventArgs.Body;
