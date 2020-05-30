@@ -1,4 +1,4 @@
-# RabbitMQ toturial 2 work queue
+# [RabbitMQ toturial 2 work queue](https://www.rabbitmq.com/tutorials/tutorial-two-dotnet.html)
 
 Work Queues (或稱 Task Queues) 的核心概念，是將複雜工作放進 queue 等待被完成，避免立刻執行需要消耗大量資源與時間的工作。
 
