@@ -1,4 +1,4 @@
-# RabbitMQ toturial 1 HelloWorld!
+# [RabbitMQ toturial 1 HelloWorld!](https://www.rabbitmq.com/tutorials/tutorial-one-dotnet.html)
 
 說明如何透過官方的 package 建立基本的連線。
 此範例中只有一個 Producer (Send 專案)、Consumer (Receive) 專案。
