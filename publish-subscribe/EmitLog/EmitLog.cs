@@ -13,11 +13,15 @@ namespace EmitLog
             using (var connection = factory.CreateConnection())
             using (var channel = connection.CreateModel())
             {
+                // 宣告 Fanout type 的 exchange
+                // 並命名為 logs
                 channel.ExchangeDeclare(exchange: "logs",
                                         type: ExchangeType.Fanout);
                 
                 var message = GetMessage(args);
                 var body = Encoding.UTF8.GetBytes(message);
+                
+                // 推送訊息到名稱為 logs 的 exchange
                 channel.BasicPublish(exchange: "logs",
                                      routingKey: "",
                                      basicProperties: null,
