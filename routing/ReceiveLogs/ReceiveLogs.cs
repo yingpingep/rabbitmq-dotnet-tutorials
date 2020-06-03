@@ -18,16 +18,13 @@ namespace ReceiveLogs
                 channel.ExchangeDeclare(exchange: "direct_logs",
                                         type: ExchangeType.Direct);            
 
-                if (args.Length < 1) {
-                    Console.WriteLine("Usage: {0} [info] [warning] [error]",
-                                      Environment.GetCommandLineArgs()[0]);
-                    Console.WriteLine(" Press [enter] to exit.");
-                    Console.ReadLine();
-                    Environment.ExitCode = 1;
-                    return;
+                string[] keys = getKeys(args);
+
+                if (keys.Length == 1) {
+                    Console.WriteLine("Using default routing key [info].");
                 }
 
-                foreach (var key in args)
+                foreach (var key in keys)
                 {
                     channel.QueueBind(queue: queueName,
                                       exchange: "direct_logs",
@@ -54,6 +51,13 @@ namespace ReceiveLogs
                 Console.ReadLine();
             }
             
+        }
+
+        private static string[] getKeys(string[] args)
+        {            
+            return args.Length < 1 
+                ? new string[1] {"info"}
+                : args;
         }
     }
 }
