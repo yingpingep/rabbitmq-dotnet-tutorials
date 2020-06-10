@@ -110,19 +110,22 @@ Fanout exchange 是這個範例主要使用的 exchange 類型，它會將傳入
 
 ## Run demo
 
-> 該範例的程式碼都有在建立連線後宣告 queue 資訊，所以啟動的先後順序並沒有差異。  
+> 該範例的程式碼僅在 consumer 建立連線後宣告 queue 資訊，所以需要先啟動 consumer 的專案。  
 > 請使用不同的 terminal 執行。
 
 Run the consumer:
 
 ```
-cd Worker
-dotnet run
+cd ReceiveLogs
+// dotnet run [routing key]
+dotnet run warning
 ```
 
 Run the producer:
 
 ```
-cd NewTask
-dotnet run "Message..."   # consumer 收到訊息後會等待 3 秒
+cd EmitLog
+// dotnet run [routing key] [message]
+// default routing key is info
+dotnet run warning messageeeee
 ```
