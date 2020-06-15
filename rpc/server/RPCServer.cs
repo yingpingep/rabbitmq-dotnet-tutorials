@@ -30,9 +30,10 @@ namespace server
                     var replyProps = channel.CreateBasicProperties();
                     replyProps.CorrelationId = props.CorrelationId;
 
+                    string message = "";
                     try
                     {
-                        var message = Encoding.UTF8.GetString(body);
+                        message = Encoding.UTF8.GetString(body);
                         int n = int.Parse(message);
                         Console.WriteLine(" [.] fib({0})", message);
                         response = fib(n).ToString();
@@ -44,26 +45,25 @@ namespace server
                     }
                     finally
                     {
-                        Console.WriteLine(props.ReplyTo);
                         var responseBytes = Encoding.UTF8.GetBytes(response);
 
                         channel.BasicPublish(exchange: "",
                                              routingKey: props.ReplyTo,
                                              basicProperties: replyProps,
-                                             body: responseBytes);                                                
+                                             body: responseBytes);
+
+                        Console.WriteLine(" [O] Ack fib({0})", message);
+                        channel.BasicAck(ea.DeliveryTag, false);
                     }
-                    channel.BasicAck(deliveryTag: ea.DeliveryTag,
-                                         multiple: false);
                 };
                 channel.BasicConsume(queue: "rpc_queue",
-                                     autoAck: true,
+                                     autoAck: false,
                                      consumer: consumer);
+
+                Console.WriteLine(" [x] Awaiting RPC requests");
+                Console.ReadLine();
             }
 
-
-            Console.WriteLine(" [x] Awaiting RPC requests");
-
-            Console.ReadLine();
         }
         private static int fib(int n)
         {

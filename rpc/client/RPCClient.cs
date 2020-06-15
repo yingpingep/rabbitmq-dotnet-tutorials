@@ -39,7 +39,7 @@ namespace client
                     {
                         respQueue.Add(response);
                     }
-                };
+                };                
             }
 
             public string Call(string message)
@@ -49,14 +49,15 @@ namespace client
                     exchange: "",
                     routingKey: "rpc_queue",
                     basicProperties: props,
-                    body: messageBytes);
+                    body: messageBytes);                
 
-                // channel.BasicConsume(
-                //     consumer: consumer,
-                //     queue: replyQueueName,
-                //     autoAck: true);
+                channel.BasicConsume(
+                    queue: replyQueueName,
+                    autoAck: true,
+                    consumer: consumer);
 
-                return respQueue.Take();
+                var result = respQueue.Take();                
+                return result;                
             }
 
             public void Close()
@@ -69,10 +70,14 @@ namespace client
         {
             var rpcClient = new RpcClient();
 
-            Console.WriteLine(" [x] Requesting fib(30)");
-            var response = rpcClient.Call("30");
+            for (int i = 0; i <= 40; i++)
+            {
+                Console.WriteLine(" [x] Requesting fib({0})", i);
+                var response = rpcClient.Call($"{i}");
+                Console.WriteLine(" [.] Got '{0}'", response);                
+            }
 
-            Console.WriteLine(" [.] Got '{0}'", response);
+
             rpcClient.Close();
         }
     }
