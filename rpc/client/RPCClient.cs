@@ -19,18 +19,22 @@ namespace client
 
       public RpcClient()
       {
+        #region 建立與 RabbitQM 連線的所有準備
         var factory = new ConnectionFactory() { HostName = "localhost" };
-
         connection = factory.CreateConnection();
         channel = connection.CreateModel();
         replyQueueName = channel.QueueDeclare().QueueName;
-        consumer = new EventingBasicConsumer(channel);
+        #endregion
 
+        #region 處理送出 message 時需要一並提供給 Server 的 properties
         props = channel.CreateBasicProperties();
         var correlationId = Guid.NewGuid().ToString();
         props.CorrelationId = correlationId;
         props.ReplyTo = replyQueueName;
+        #endregion
 
+        #region 處理從 Server 回傳的結果
+        consumer = new EventingBasicConsumer(channel);
         consumer.Received += (model, ea) =>
         {
           var body = ea.Body.ToArray();
@@ -40,26 +44,31 @@ namespace client
             respQueue.Add(response);
           }
         };
-      }
-
-      public string Call(string message)
-      {
-        var messageBytes = Encoding.UTF8.GetBytes(message);
-        channel.BasicPublish(
-            exchange: "",
-            routingKey: "rpc_queue",
-            basicProperties: props,
-            body: messageBytes);
 
         channel.BasicConsume(
             queue: replyQueueName,
             autoAck: true,
             consumer: consumer);
+        #endregion
+      }
+
+      /**
+       * 送出 RPC message       
+       */
+      public string Call(string message)
+      {        
+        var messageBytes = Encoding.UTF8.GetBytes(message);
+        channel.BasicPublish(
+            exchange: "",
+            routingKey: "rpc_queue",
+            basicProperties: props,
+            body: messageBytes);        
 
         var result = respQueue.Take();
         return result;
       }
 
+      // 關閉與 RabbitMQ 的連線
       public void Close()
       {
         connection.Close();
