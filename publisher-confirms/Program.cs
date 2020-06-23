@@ -28,7 +28,7 @@ namespace publisher_confirms
         }
 
 
-        #region 同步確認 confirms
+        #region 同步等待確認
         private static void SynchronousWaitForConfirms() 
         {
             using (IModel channel = connection.CreateModel()) {
@@ -64,7 +64,7 @@ namespace publisher_confirms
         }   
         #endregion
 
-        #region 
+        #region 非同步等待確認
         private static void AsynchronousWaitConfirm() 
         {
             using (var channel = connection.CreateModel())
@@ -76,12 +76,17 @@ namespace publisher_confirms
                 channel.ConfirmSelect();
                 int count = 0;
 
-                var concurrentQueue = new ConcurrentQueue<string>();
-                var outstandingConfirms = new ConcurrentDictionary<ulong, string>();
+                // 收到 nack 的 messages 會被放到這個 Queue 中，等待一次重送的機會
+                var republishMessages = new ConcurrentQueue<string>();
 
-                Action action = () => 
+                // 單純拿來記錄以發送的 messages
+                var outstandingConfirms = new ConcurrentDictionary<ulong, string>();
+                
+                // 處理沒有成功被 confirm 的 message
+                // 僅會嘗試重送一次
+                void rePublishMessages()
                 {
-                    while(concurrentQueue.TryDequeue(out string body))
+                    while(republishMessages.TryDequeue(out string body))
                     {
                         channel.BasicPublish(exchange: "", 
                                              routingKey: queueName,
@@ -91,6 +96,7 @@ namespace publisher_confirms
                     }
                 };
 
+                // 把收到 ack / nack 的 messages 從 outstandingConfirms 清掉
                 void cleanOutstandingConfirms(ulong sequenceNumber, bool multiple, bool ack)
                 {    
                     if (multiple)
@@ -100,7 +106,7 @@ namespace publisher_confirms
                         {
                             if (ack) 
                             {
-                                concurrentQueue.Enqueue(entry.Value);                    
+                                republishMessages.Enqueue(entry.Value);                    
                             }
                             outstandingConfirms.TryRemove(entry.Key, out _);
                         }
@@ -110,23 +116,25 @@ namespace publisher_confirms
                     if (ack)
                     {
                         outstandingConfirms.TryGetValue(sequenceNumber, out string body);
-                        concurrentQueue.Enqueue(body);
+                        republishMessages.Enqueue(body);
                     }
                     outstandingConfirms.TryRemove(sequenceNumber, out _);       
                 }
 
+                // Broker 回傳 confirms 會透過 ack 通知 publisher，哪筆 message 已被收下
                 channel.BasicAcks += (sender, ea) => {
                     Console.WriteLine($"Message has been  ack-ed. Sequence number: {ea.DeliveryTag}, multiple: {ea.Multiple}");
                     cleanOutstandingConfirms(ea.DeliveryTag, ea.Multiple, true);
                 };
 
+                // 或是透過 nack 告知 publisher，哪筆 message 被拒絕
                 channel.BasicNacks += (sender, ea) =>
                 {
                     outstandingConfirms.TryGetValue(ea.DeliveryTag, out string body);
                     Console.WriteLine($"Message has been nack-ed. Sequence number: {ea.DeliveryTag}, multiple: {ea.Multiple}");
                     
                     cleanOutstandingConfirms(ea.DeliveryTag, ea.Multiple, false);      
-                    Parallel.Invoke(action);   
+                    rePublishMessages();
                 };
 
                 var timer = new Stopwatch();
