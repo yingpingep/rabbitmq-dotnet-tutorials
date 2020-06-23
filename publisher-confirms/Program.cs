@@ -21,7 +21,7 @@ namespace publisher_confirms
             var factory = new ConnectionFactory();
             connection = factory.CreateConnection();
             
-            // SynchronousWaitForConfirms();
+            SynchronousWaitForConfirms();
             AsynchronousWaitConfirm();
 
             connection.Close();
