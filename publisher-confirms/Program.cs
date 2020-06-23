@@ -48,11 +48,10 @@ namespace publisher_confirms
                                         basicProperties: null,
                                         body: body);
                                         
-                    channel.WaitForConfirms(new TimeSpan(0, 0, 0, 0, 10), out timeout);
+                    channel.WaitForConfirms(new TimeSpan(0, 0, 0, 0, 2), out timeout);
 
                     if (timeout) {                        
-                        Console.WriteLine("Timeout!");
-                        break;
+                        Console.WriteLine($"Message {i} Timeout!");
                     }
 
                     i += 1;
