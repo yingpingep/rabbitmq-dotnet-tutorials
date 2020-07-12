@@ -12,42 +12,61 @@ namespace consumer
         static void Main(string[] args)
         {
             IConnectionFactory factory = new ConnectionFactory();
-            IList<string> hostnames = new List<string>() {
-                "IP1",
-                "IP2"
-            };
+            IList<string> hostnames = new List<string>();
+            foreach (var host in args)
+            {
+                hostnames.Add(host);
+            }
             string queueName = "ha-all-test";
 
             using (IConnection connection = factory.CreateConnection(hostnames))
             using (IModel channel = connection.CreateModel())
             {
-                EventingBasicConsumer consumer = new EventingBasicConsumer(channel);
+                EventingBasicConsumer consumer = new EventingBasicConsumer(channel);                
+
+                consumer.ConsumerCancelled += (ModuleHandle, EventArgs) => {
+                    Console.WriteLine("\n!!! ************************************ !!!");
+                    Console.WriteLine("!!! Got cancell notification from broker !!!");
+                    Console.WriteLine("!!! ************************************ !!!\n");
+                    
+                    // foreach (var tag in EventArgs.ConsumerTags)
+                    // {
+                    //     channel.BasicCancel(tag);                        
+                    // }
+                };
+
                 consumer.Received += (model, ea) => {                    
                     try
                     {
                         string message = Encoding.UTF8.GetString(ea.Body.ToArray());
 
-                        Console.WriteLine(" [x] Got message: {0}", message);
+                        Console.WriteLine(" [x] Got message: {0}", ea.Body);
                         
                         if (ea.Redelivered) {
                             Console.WriteLine(" => This message had been delivered!");
-                            channel.BasicReject(ea.DeliveryTag, false);
-                            return;
+                            channel.BasicAck(ea.DeliveryTag, false);
+                        } else {
+                            Console.WriteLine("[UwU] Going to ack!");
+                            channel.BasicAck(ea.DeliveryTag, false);
                         }
+                        Console.WriteLine("\n[UwU] Going to receive another message.\n");                   
 
-                        Thread.Sleep(5000);
-                        Console.WriteLine("[UwU] Going to ack!");
-                        channel.BasicAck(ea.DeliveryTag, false);                        
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine(" => Exception happen: {0}\n", e.Message);
+                        Console.WriteLine("\n => Exception happen: {0}\n", e.Message);
+                        Thread.Sleep(5000);
+                        Console.WriteLine(" => 5 seconds later...\n");
                     }
-
-                    Console.WriteLine("[UwU] Going to receive another message.\n");                        
+                    
+                    Thread.Sleep(500);                    
                 };
 
-                channel.BasicConsume(queueName, false, consumer);
+                channel.BasicQos(0, 1, false);
+                channel.BasicConsume(
+                    queue: queueName,
+                    autoAck: false,
+                    consumer: consumer);
                 Console.WriteLine("Press [Enter] to exit.");
                 Console.ReadLine();
             }

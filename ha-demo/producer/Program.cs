@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Threading;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Exceptions;
 
 namespace producer
 {
@@ -10,10 +13,11 @@ namespace producer
         static void Main(string[] args)
         {
             var factory = new ConnectionFactory();
-            List<string> hostnames = new List<string>() {
-                "IP1",
-                "IP2"
-            };
+            List<string> hostnames = new List<string>();
+            foreach (var host in args)
+            {
+                hostnames.Add(host);
+            }
 
             string queueName = "ha-all-test";
             int count = 0;
@@ -21,24 +25,29 @@ namespace producer
             using (var connection = factory.CreateConnection(hostnames))
             using (var channel = connection.CreateModel())
             {
-                Console.WriteLine("Press [Enter] to push messages...");
-                while (Console.ReadKey().Key == ConsoleKey.Enter)
+                while (count < 1000)
                 {
-                    for (int i = 0; i < 10; i++)
+                    try
                     {
-                        string message = $"hello !!! message {count}";
-                        byte[] body = Encoding.UTF8.GetBytes(message);
+                        byte[] body = Enumerable.Repeat((byte)0x20, 1000).ToArray();
                         channel.BasicPublish(
                             exchange: "",
                             routingKey: queueName,
                             mandatory: false,
                             basicProperties: null,
                             body: body
-                        );            
-                        Console.WriteLine("{0} send", message);
-                        count += 1;
-                    }                    
-                    Console.WriteLine("Press [Enter] to push next 10 messages...");
+                        );
+                        Console.WriteLine("{0} send", count);
+                        count += 1;     
+                        Thread.Sleep(300);
+                    }
+                    catch (AlreadyClosedException ace)
+                    {
+                        Console.WriteLine(ace.Message);
+                        Thread.Sleep(10000);
+                        Console.WriteLine("10 seconds later...");
+                    }
+                    
                 }
             }
         }
